@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PublishStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  QUOTED
+  WON
+  LOST
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  SALES
+}
+
+enum ConstructionGrade {
+  ESSENTIAL
+  PREMIUM
+  LUXURY
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  VIEWED
+  UNDER_DISCUSSION
+  REVISION_REQUESTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model BlogPost {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  excerpt        String
+  content        String        @db.Text
+  coverImage     String?
+  category       String
+  tags           String[]
+  seoTitle       String?
+  seoDescription String?
+  status         PublishStatus @default(DRAFT)
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  category    String
+  location    String
+  year        Int?
+  summary     String
+  description String   @db.Text
+  coverImage  String?
+  gallery     String[]
+  featured    Boolean  @default(false)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Enquiry {
+  id                  String                 @id @default(cuid())
+  name                String
+  phone               String
+  email               String?
+  projectType         String
+  location            String?
+  budget              String?
+  message             String?
+  projectArea         String?
+  floors              Int?
+  services            String[]               @default([])
+  timeline            String?
+  documents           String[]               @default([])
+  status              LeadStatus             @default(NEW)
+  source              String                 @default("Website")
+  submissionId        String?                @unique
+  assignedToId        String?
+  assignedTo          AdminUser?             @relation("AssignedEnquiries", fields: [assignedToId], references: [id], onDelete: SetNull)
+  followUpAt          DateTime?
+  emailDeliveryStatus String                 @default("NOT_CONFIGURED")
+  emailAttempts       Int                    @default(0)
+  emailLastAttemptAt  DateTime?
+  customerId          String?
+  customer            Customer?              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  quotations          Quotation[]
+  activities          ActivityLog[]
+  emailDeliveries     EmailDeliveryAttempt[]
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  @@index([status, createdAt])
+  @@index([assignedToId, followUpAt])
+}
+
+model Customer {
+  id           String       @id @default(cuid())
+  name         String
+  phone        String       @unique
+  email        String?
+  siteLocation String?
+  enquiries    Enquiry[]
+  quotations   Quotation[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model ConstructionPackage {
+  id                    String                     @id @default(cuid())
+  code                  String                     @unique
+  name                  String
+  description           String                     @db.Text
+  quality               ConstructionGrade
+  ratePerSqFt           Decimal?                   @db.Decimal(12, 2)
+  gstRate               Decimal?                   @db.Decimal(5, 2)
+  validityDays          Int                        @default(30)
+  inclusions            String                     @default("") @db.Text
+  exclusions            String                     @default("") @db.Text
+  additionalCharges     Json                       @default("[]")
+  paymentMilestones     Json                       @default("[]")
+  active                Boolean                    @default(true)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  packageMaterials      PackageMaterial[]
+  pricingRules          PricingRule[]
+  quotations            Quotation[]
+
+  @@index([active, quality])
+}
+
+model MaterialCategory {
+  id            String             @id @default(cuid())
+  name          String             @unique
+  sortOrder     Int                @default(0)
+  active        Boolean            @default(true)
+  specifications MaterialSpecification[]
+  packageMaterials PackageMaterial[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model MaterialSpecification {
+  id            String          @id @default(cuid())
+  categoryId    String
+  category      MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  name          String
+  quality       ConstructionGrade
+  brand         String?
+  details       String          @default("") @db.Text
+  active        Boolean         @default(true)
+  defaultFor    PackageMaterial[]
+  pricingRules  PricingRule[]
+  quotationItems QuotationItem[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([categoryId, name, quality, brand])
+  @@index([categoryId, quality, active])
+}
+
+model PackageMaterial {
+  id                 String               @id @default(cuid())
+  packageId          String
+  package            ConstructionPackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  categoryId         String
+  category            MaterialCategory     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  specificationId    String
+  specification      MaterialSpecification @relation(fields: [specificationId], references: [id], onDelete: Restrict)
+
+  @@unique([packageId, categoryId])
+}
+
+model PricingRule {
+  id                  String               @id @default(cuid())
+  packageId           String
+  package             ConstructionPackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  specificationId     String
+  specification       MaterialSpecification @relation(fields: [specificationId], references: [id], onDelete: Cascade)
+  adjustmentPerSqFt   Decimal              @db.Decimal(12, 2)
+  updatedAt           DateTime             @updatedAt
+
+  @@unique([packageId, specificationId])
+}
+
+model Quotation {
+  id               String             @id @default(cuid())
+  quotationNo      String             @unique
+  submissionId     String?            @unique
+  publicTokenHash  String?            @unique
+  customerId       String
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  enquiryId        String?
+  enquiry          Enquiry?           @relation(fields: [enquiryId], references: [id], onDelete: SetNull)
+  packageId        String
+  package          ConstructionPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  status           QuotationStatus    @default(DRAFT)
+  propertyType     String
+  siteLocation    String
+  plotAreaSqFt     Decimal?           @db.Decimal(12, 2)
+  constructionAreaSqFt Decimal        @db.Decimal(12, 2)
+  floors           Int?
+  requirements     String             @default("") @db.Text
+  baseRatePerSqFt  Decimal            @db.Decimal(12, 2)
+  upgradeRatePerSqFt Decimal          @db.Decimal(12, 2)
+  applicableRatePerSqFt Decimal       @db.Decimal(12, 2)
+  subtotal         Decimal            @db.Decimal(14, 2)
+  gstRate          Decimal?           @db.Decimal(5, 2)
+  gstAmount        Decimal            @default(0) @db.Decimal(14, 2)
+  additionalCharges Json              @default("[]")
+  totalAmount      Decimal            @db.Decimal(14, 2)
+  inclusions       String             @default("") @db.Text
+  exclusions       String             @default("") @db.Text
+  paymentMilestones Json              @default("[]")
+  validityDays     Int
+  issuedAt         DateTime           @default(now())
+  validUntil       DateTime
+  items            QuotationItem[]
+  revisions        QuotationRevision[]
+  activities       QuotationActivity[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model QuotationItem {
+  id                     String                @id @default(cuid())
+  quotationId            String
+  quotation              Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  specificationId        String?
+  specification          MaterialSpecification? @relation(fields: [specificationId], references: [id], onDelete: SetNull)
+  categoryName           String
+  specificationName      String
+  quality                ConstructionGrade?
+  brand                  String?
+  details                String                @default("") @db.Text
+  adjustmentPerSqFt      Decimal               @default(0) @db.Decimal(12, 2)
+  includedInPackage      Boolean               @default(false)
+  createdAt              DateTime              @default(now())
+}
+
+model QuotationRevision {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  revision    Int
+  snapshot    Json
+  actorEmail  String
+  createdAt   DateTime  @default(now())
+
+  @@unique([quotationId, revision])
+}
+
+model QuotationActivity {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  action      String
+  details     String    @default("") @db.Text
+  actorEmail  String
+  createdAt   DateTime  @default(now())
+
+  @@index([quotationId, createdAt])
+}
+
+model EmailDeliveryAttempt {
+  id                String   @id @default(cuid())
+  enquiryId         String
+  enquiry           Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  recipient         String
+  status            String
+  providerMessageId String?
+  error             String?
+  attemptedAt       DateTime @default(now())
+
+  @@index([enquiryId, attemptedAt])
+}
+
+model AdminUser {
+  id                String        @id @default(cuid())
+  name              String
+  email             String        @unique
+  passwordHash      String
+  role              AdminRole     @default(ADMIN)
+  disabled          Boolean       @default(false)
+  assignedEnquiries Enquiry[]     @relation("AssignedEnquiries")
+  activities        ActivityLog[]
+  createdAt         DateTime      @default(now())
+}
+
+model ActivityLog {
+  id         String     @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  actorEmail String
+  details    String?    @db.Text
+  enquiryId  String?
+  enquiry    Enquiry?   @relation(fields: [enquiryId], references: [id], onDelete: SetNull)
+  actorId    String?
+  actor      AdminUser? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime   @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([enquiryId, createdAt])
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  publicId  String   @unique
+  url       String
+  secureUrl String
+  format    String
+  bytes     Int
+  width     Int?
+  height    Int?
+  altText   String?
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Testimonial {
+  id           String   @id @default(cuid())
+  customerName String
+  attribution  String?
+  quote        String   @db.Text
+  verified     Boolean  @default(false)
+  published    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model RateLimitBucket {
+  key         String
+  windowStart DateTime
+  hits        Int      @default(1)
+
+  @@id([key, windowStart])
+}

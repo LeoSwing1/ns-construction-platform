@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logApiError } from "@/lib/api-errors";
 import { canManageContent, getAdminOrResponse } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
@@ -13,7 +14,7 @@ export async function GET() {
   const authorization = await getAdminOrResponse();
   if (authorization.response) return authorization.response;
   try { return NextResponse.json(await prisma.project.findMany({orderBy:{createdAt:"desc"}})); }
-  catch(error) { console.error("Admin projects could not be loaded");return NextResponse.json(databaseErrorResponse(error,"Projects are temporarily unavailable."),{status:503}); }
+  catch(error) { logApiError("/api/admin/projects GET",error);return NextResponse.json(databaseErrorResponse(error,"Projects are temporarily unavailable."),{status:503}); }
 }
 export async function POST(req:Request) {
   const authorization = await getAdminOrResponse();
@@ -27,7 +28,7 @@ export async function POST(req:Request) {
     await prisma.activityLog.create({data:{action:"PROJECT_CREATED",entityType:"PROJECT",entityId:project.id,actorEmail:admin.email,details:`Project ${project.slug} created.`}});
     return NextResponse.json(project,{status:201});
   } catch (error) {
-    console.error("Project creation failed", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/projects POST", error);
     return prismaErrorCode(error) === "P2002"
       ? NextResponse.json({error:"A project with this slug already exists."},{status:409})
       : NextResponse.json(databaseErrorResponse(error,"Project could not be saved."),{status:503});

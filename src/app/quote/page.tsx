@@ -12,7 +12,7 @@ type Estimate = {
   packageId: string; packageName: string; quality: Grade; baseRatePerSqFt: number; upgradeRatePerSqFt: number; applicableRatePerSqFt: number;
   areaSqFt: number; subtotal: number; additionalCharges: { name: string; type: string; amount: number; total: number }[]; additionalChargesTotal: number;
   gstRate: number | null; gstAmount: number; totalAmount: number; validityDays: number; inclusions: string; exclusions: string;
-  paymentMilestones: { label: string; percentage: number }[]; items: { specificationId: string; categoryId: string; categoryName: string; specificationName: string; quality: Grade; brand: string | null; details: string; adjustmentPerSqFt: number; includedInPackage: boolean; abovePackageGrade: boolean }[];
+  paymentMilestones: { label: string; percentage: number }[]; items: { specificationId: string; categoryId: string; categoryName: string; specificationName: string; quality: Grade; brand: string | null; details: string; packageAllowance: { specificationName: string; quality: Grade; brand: string | null } | null; adjustmentPerSqFt: number; includedInPackage: boolean; abovePackageGrade: boolean }[];
   recommendedPackage: { id: string; name: string; quality: Grade; ratePerSqFt: number | null; totalAmount: number | null; applicableRatePerSqFt: number | null; unavailableReason: string | null } | null;
   rateDifference: number;
 };
@@ -212,8 +212,11 @@ export default function QuoteBuilder() {
             <div className="quote-rate quote-rate-total"><span>Applicable construction rate</span><strong>{money(estimate.applicableRatePerSqFt)}<small> / sq. ft.</small></strong></div>
             <div className="quote-calc-line"><span>{estimate.areaSqFt.toLocaleString("en-IN")} sq. ft. × {money(estimate.applicableRatePerSqFt)}</span><strong>{money(estimate.subtotal)}</strong></div>
             {estimate.items.map((item) => <div className={`quote-upgrade ${item.abovePackageGrade ? "is-upgrade" : ""}`} key={item.specificationId}>
-              <span>{item.includedInPackage ? "Included" : item.abovePackageGrade ? "Grade upgrade" : "Additional selection"} · {item.categoryName}<small>{item.specificationName}{item.brand ? ` · ${item.brand}` : ""} · {gradeLabel(item.quality)}</small></span>
-              <strong>{item.includedInPackage ? "Included" : `+${money(item.adjustmentPerSqFt)}/sq. ft.`}</strong>
+              <span>{item.includedInPackage ? "Included" : item.abovePackageGrade ? "Grade upgrade" : "Additional selection"} · {item.categoryName}
+                <small>Selected: {item.specificationName}{item.brand ? ` · ${item.brand}` : ""} · {gradeLabel(item.quality)}</small>
+                <small>Package allowance: {item.packageAllowance ? `${item.packageAllowance.specificationName}${item.packageAllowance.brand ? ` · ${item.packageAllowance.brand}` : ""} · ${gradeLabel(item.packageAllowance.quality)}` : "No configured allowance"}</small>
+              </span>
+              <strong>{item.includedInPackage ? "Included" : `+${money(item.adjustmentPerSqFt * estimate.areaSqFt)} total · ${money(item.adjustmentPerSqFt)}/sq. ft.`}</strong>
             </div>)}
             {estimate.items.some((item) => !item.includedInPackage) && <label className="quote-confirm"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /> I have reviewed and confirm the itemised specification upgrades and their displayed price impact.</label>}
             {estimate.recommendedPackage && estimate.recommendedPackage.id !== estimate.packageId && <div className="quote-recommendation">

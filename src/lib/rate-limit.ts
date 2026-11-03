@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { prismaErrorCode } from "@/lib/prisma-errors";
+import { prismaErrorCode, prismaErrorDetails } from "@/lib/prisma-errors";
 
 const WINDOW_MS = 60 * 60 * 1000;
 const localBuckets = new Map<string, { hits: number; expiresAt: number }>();
@@ -50,7 +50,7 @@ export async function consumeLoginRateLimit(request: Request, maximum: number) {
   } catch (error) {
     const code = prismaErrorCode(error);
     if (!["DATABASE_CONFIG_INVALID", "P1000", "P1001", "P1002", "P1003", "P1008", "P1010", "P1011", "P1013", "P1017", "P2021", "P2022"].includes(code || "")) throw error;
-    console.error("Persistent login rate limiting is unavailable; using the per-process limit", { code });
+    console.error("Persistent login rate limiting is unavailable; using the per-process limit", prismaErrorDetails(error));
     return true;
   }
 }

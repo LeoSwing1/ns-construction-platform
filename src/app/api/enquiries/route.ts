@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import { MediaUploadError, uploadToCloudinary } from "@/lib/cloudinary";
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     try {
       await prisma.activityLog.create({ data: { action: "ENQUIRY_CREATED", entityType: "ENQUIRY", entityId: enquiry.id, enquiryId: enquiry.id, actorEmail: "website", details: "Project consultation request received." } });
     } catch (error) {
-      console.error("Enquiry was saved, but its activity log could not be recorded", { enquiryId: enquiry.id, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+      logApiError("POST /api/enquiries activity log", error);
     }
 
     let deliveryStatus = "NOT_CONFIGURED";
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
       }
     } catch (error) {
       deliveryStatus = "FAILED";
-      console.error("Enquiry was saved, but notification delivery or tracking failed", { enquiryId: enquiry.id, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+      logApiError("POST /api/enquiries notification tracking", error);
     }
     try {
       await prisma.enquiry.update({ where: { id: enquiry.id }, data: {
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
         emailLastAttemptAt: attempts ? new Date() : null,
       } });
     } catch (error) {
-      console.error("Enquiry was saved, but its notification status could not be recorded", { enquiryId: enquiry.id, deliveryStatus, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+      logApiError("POST /api/enquiries delivery status", error);
     }
     return NextResponse.json({ ok: true, id: enquiry.id, emailDeliveryStatus: deliveryStatus }, { status: 201 });
   } catch (error) {
@@ -137,10 +138,10 @@ export async function POST(request: Request) {
         const duplicate = await prisma.enquiry.findUnique({ where: { submissionId: data.submissionId }, select: { id: true } });
         if (duplicate) return NextResponse.json({ ok: true, id: duplicate.id, duplicate: true });
       } catch (lookupError) {
-        console.error("Idempotent enquiry lookup failed", { code: prismaErrorCode(lookupError) || "UNEXPECTED_ERROR" });
+        logApiError("POST /api/enquiries duplicate lookup", lookupError);
       }
     }
-    console.error("Project enquiry could not be saved", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("POST /api/enquiries", error);
     return NextResponse.json(databaseErrorResponse(error, "We could not save your enquiry right now. Please try again or call us."), { status: 503 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { logApiError } from "@/lib/api-errors";
 import { canManageContent, getAdminOrResponse } from "@/lib/auth";
 import { MediaUploadError, uploadToCloudinary } from "@/lib/cloudinary";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +18,7 @@ export async function GET() {
   try {
     return NextResponse.json(await prisma.mediaAsset.findMany({ orderBy: { createdAt: "desc" }, take: 200 }));
   } catch (error) {
-    console.error("Media library could not be loaded", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/media GET", error);
     return NextResponse.json(databaseErrorResponse(error, "The media library is temporarily unavailable."), { status: 503 });
   }
 }
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     if (error instanceof MediaUploadError) return NextResponse.json({ error: error.message }, { status: error.status });
-    console.error("Media upload failed", { actor: admin.email, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/media POST", error);
     return NextResponse.json(databaseErrorResponse(error, "Image upload could not be completed."), { status: 503 });
   }
 }
@@ -69,7 +70,7 @@ export async function PATCH(request: Request) {
     await prisma.activityLog.create({ data: { action: "MEDIA_UPDATED", entityType: "MEDIA", entityId: updated.id, actorEmail: admin.email, details: "Image alternative text updated." } });
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Media metadata update failed", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/media PATCH", error);
     return prismaErrorCode(error) === "P2025"
       ? NextResponse.json({ error: "Image not found.", code: "RECORD_NOT_FOUND" }, { status: 404 })
       : NextResponse.json(databaseErrorResponse(error, "Image metadata could not be updated."), { status: 503 });
@@ -117,7 +118,7 @@ export async function DELETE(request: Request) {
     ]);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Media deletion failed", { actor: admin.email, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/media DELETE", error);
     return NextResponse.json(databaseErrorResponse(error, "Image deletion could not be completed."), { status: 503 });
   }
 }

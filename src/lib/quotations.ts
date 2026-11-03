@@ -47,6 +47,7 @@ export type CalculatedItem = {
   quality: "ESSENTIAL" | "PREMIUM" | "LUXURY";
   brand: string | null;
   details: string;
+  packageAllowance: { specificationName: string; quality: "ESSENTIAL" | "PREMIUM" | "LUXURY"; brand: string | null } | null;
   adjustmentPerSqFt: number;
   includedInPackage: boolean;
   abovePackageGrade: boolean;
@@ -71,7 +72,15 @@ function parsePackageJson<T extends z.ZodTypeAny>(value: Prisma.JsonValue, schem
 async function calculateForPackage(packageId: string, area: number, selections: EstimateInput["selections"]) {
   const packageDetails = await prisma.constructionPackage.findUnique({
     where: { id: packageId },
-    include: { packageMaterials: true },
+    include: {
+      packageMaterials: {
+        select: {
+          categoryId: true,
+          specificationId: true,
+          specification: { select: { name: true, quality: true, brand: true } },
+        },
+      },
+    },
   });
   if (!packageDetails || !packageDetails.active) throw new QuotationInputError("The selected construction package is unavailable.");
   if (packageDetails.ratePerSqFt === null) throw new QuotationInputError(`${packageDetails.name} does not have an administrator-approved rate yet.`);
@@ -98,13 +107,15 @@ async function calculateForPackage(packageId: string, area: number, selections: 
     }
   }
 
-  const [packageDefaults, rules] = await Promise.all([
-    prisma.packageMaterial.findMany({ where: { packageId }, select: { categoryId: true, specificationId: true } }),
-    selectedIds.length
-      ? prisma.pricingRule.findMany({ where: { packageId, specificationId: { in: selectedIds } } })
-      : Promise.resolve([]),
-  ]);
-  const defaults = new Map(packageDefaults.map((item) => [item.categoryId, item.specificationId]));
+  const rules = selectedIds.length
+    ? await prisma.pricingRule.findMany({ where: { packageId, specificationId: { in: selectedIds } } })
+    : [];
+  const defaults = new Map(packageDetails.packageMaterials.map((item) => [item.categoryId, item.specificationId]));
+  const allowanceByCategory = new Map(packageDetails.packageMaterials.map((item) => [item.categoryId, {
+    specificationName: item.specification.name,
+    quality: item.specification.quality,
+    brand: item.specification.brand,
+  }]));
   const ruleBySpec = new Map(rules.map((rule) => [rule.specificationId, Number(rule.adjustmentPerSqFt.toString())]));
 
   const items: CalculatedItem[] = selections.map((selection) => {
@@ -122,6 +133,7 @@ async function calculateForPackage(packageId: string, area: number, selections: 
       quality: specification.quality,
       brand: specification.brand,
       details: specification.details,
+      packageAllowance: allowanceByCategory.get(selection.categoryId) ?? null,
       adjustmentPerSqFt,
       includedInPackage,
       abovePackageGrade: gradeRank[specification.quality] > gradeRank[packageDetails.quality],

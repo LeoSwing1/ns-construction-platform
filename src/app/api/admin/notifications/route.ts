@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { logApiError } from "@/lib/api-errors";
 import { canManageLeads, getAdminOrResponse } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
+import { databaseErrorResponse } from "@/lib/prisma-errors";
 
 export async function GET() {
   const authorization = await getAdminOrResponse();
@@ -23,7 +24,7 @@ export async function GET() {
     });
     return NextResponse.json(items);
   } catch (error) {
-    console.error("Admin notification centre could not be loaded", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/notifications GET", error);
     return NextResponse.json(databaseErrorResponse(error, "Notifications are temporarily unavailable."), { status: 503 });
   }
 }

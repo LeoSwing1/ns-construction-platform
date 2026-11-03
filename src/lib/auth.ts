@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
+import { databaseErrorResponse, prismaErrorDetails } from "@/lib/prisma-errors";
 const COOKIE = "ns_admin_session";
 export type AdminRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR" | "SALES";
 export type AdminIdentity = { email: string; role: AdminRole };
@@ -51,7 +51,7 @@ export async function getAdmin(): Promise<AdminIdentity | null> {
   try {
     return await readAdmin();
   } catch (error) {
-    console.error("Admin account authorization could not be verified", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    console.error("Admin account authorization could not be verified", prismaErrorDetails(error));
     return null;
   }
 }
@@ -66,7 +66,7 @@ export async function getAdminOrResponse(): Promise<
       ? { admin, response: null }
       : { admin: null, response: NextResponse.json({ error: "Unauthorized", code: "UNAUTHORIZED" }, { status: 401 }) };
   } catch (error) {
-    console.error("Admin account authorization could not be verified", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    console.error("Admin account authorization could not be verified", prismaErrorDetails(error));
     return {
       admin: null,
       response: NextResponse.json(databaseErrorResponse(error, "Admin access could not be verified."), { status: 503 }),

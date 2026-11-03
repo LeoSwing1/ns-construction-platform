@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logApiError } from "@/lib/api-errors";
 import { canManageSettings, getAdminOrResponse } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
+import { databaseErrorResponse } from "@/lib/prisma-errors";
 
 const schema = z.object({
   phoneDisplay: z.string().trim().min(7).max(25).regex(/^[+\d\s().-]+$/),
@@ -28,7 +29,7 @@ export async function GET() {
     const values = await prisma.siteSetting.findMany({ select: { key: true, value: true } });
     return NextResponse.json(Object.fromEntries(values.map(({ key, value }) => [key, value])));
   } catch (error) {
-    console.error("Website settings could not be loaded", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/settings GET", error);
     return NextResponse.json(databaseErrorResponse(error, "Website settings are temporarily unavailable."), { status: 503 });
   }
 }
@@ -48,7 +49,7 @@ export async function PATCH(request: Request) {
     ]);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Website settings update failed", { actor: admin.email, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/settings PATCH", error);
     return NextResponse.json(databaseErrorResponse(error, "Website settings could not be saved."), { status: 503 });
   }
 }

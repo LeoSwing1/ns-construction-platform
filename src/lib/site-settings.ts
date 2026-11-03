@@ -1,5 +1,5 @@
+import { logApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
-import { prismaErrorCode } from "@/lib/prisma-errors";
 import { site } from "@/lib/site";
 
 export type PublicSiteSettings = {
@@ -50,7 +50,7 @@ export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
       mapsUrl: validMapsUrl(values.mapsUrl) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`,
     };
   } catch (error) {
-    console.error("Website contact settings could not be loaded", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("Public site settings", error);
     return defaults;
   }
 }

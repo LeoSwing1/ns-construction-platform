@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logApiError } from "@/lib/api-errors";
 import { canManageLeads, getAdminOrResponse } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(items);
   } catch (error) {
-    console.error("Admin enquiries could not be loaded", { code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/enquiries GET", error);
     return NextResponse.json(databaseErrorResponse(error, "Enquiries are temporarily unavailable."), { status: 503 });
   }
 }
@@ -82,7 +83,7 @@ export async function PATCH(request: Request) {
     });
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Enquiry update failed", { enquiryId: id, actor: admin.email, code: prismaErrorCode(error) || "UNEXPECTED_ERROR" });
+    logApiError("/api/admin/enquiries PATCH", error);
     const code = prismaErrorCode(error);
     return code === "P2025"
       ? NextResponse.json({ error: "Enquiry could not be updated. Check that the record and assigned user exist.", code: "RECORD_NOT_FOUND" }, { status: 404 })

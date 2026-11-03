@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { createSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { consumeLoginRateLimit } from "@/lib/rate-limit";
-import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
+import { databaseErrorResponse, prismaErrorDetails } from "@/lib/prisma-errors";
 
 const scryptAsync = promisify(scrypt);
 const schema = z.object({ email: z.string().email(), password: z.string().min(1) });
@@ -44,13 +44,11 @@ export async function POST(req: Request) {
     await createSession(user.email, user.role, user.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const prismaCode = prismaErrorCode(error);
     const sessionConfigurationError = error instanceof Error && error.message.includes("ADMIN_SESSION_SECRET");
     console.error("Admin sign-in failed", {
       route: "POST /api/admin/login",
       stage,
-      prismaCode: prismaCode || "NOT_A_PRISMA_ERROR",
-      errorName: error instanceof Error ? error.name : "UnknownError",
+      ...prismaErrorDetails(error),
     });
     if (sessionConfigurationError) {
       return NextResponse.json({

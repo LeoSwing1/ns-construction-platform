@@ -16,7 +16,7 @@ export default function IntegrationsPage() {
     }).catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Could not load integrations."));
   }, []);
 
-  async function test(integration: "resend" | "cloudinary") {
+  async function test(integration: "resend" | "cloudinary" | "whatsapp" | "google-sheets") {
     setMessage(`Testing ${integration}…`);
     const response = await fetch("/api/admin/integrations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ integration }) });
     const result = await response.json();
@@ -25,11 +25,11 @@ export default function IntegrationsPage() {
 
   return <main className="admin-page">
     <a className="plain-link" href="/admin">← Control room</a><div className="section-index">OPERATIONS / CONNECTION STATUS</div><h1>Integration desk</h1>
-    <p>Configuration is not the same as a verified connection. Provider tests below validate credentials without sending messages or uploading files.</p>
+    <p>Configuration is not the same as a verified connection. Tests validate provider access; WhatsApp testing does not send a message, and the Google Sheets test event is designed not to add a lead row.</p>
     {message && <div className="admin-notice" role="status">{message}</div>}
     <div className="integration-list">{items.map((item) => <article className="integration-card" key={item.id}>
       <div><span className="section-index">{item.id.toUpperCase()}</span><h2>{item.name}</h2><p>{item.detail}</p></div>
-      <div className="integration-action"><strong>{item.state}</strong>{(item.id === "resend" || item.id === "cloudinary") && <button className="btn" onClick={() => test(item.id as "resend" | "cloudinary")}>Test connection</button>}</div>
+      <div className="integration-action"><strong>{item.state}</strong>{["resend", "cloudinary", "whatsapp", "google-sheets"].includes(item.id) && <button className="btn" onClick={() => test(item.id as "resend" | "cloudinary" | "whatsapp" | "google-sheets")}>Test connection</button>}</div>
     </article>)}</div>
   </main>;
 }

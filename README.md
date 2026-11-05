@@ -133,3 +133,156 @@ Integration status distinguishes configured credentials from actual connection t
 5. Test a real enquiry, attachment, Resend notification/acknowledgement, CRM update and retry.
 6. Replace illustrative images and review the privacy policy and business details.
 7. Test responsive layouts, admin roles, production build and provider health checks in the target deployment environment.
+
+## Materials marketplace and procurement (2026-11-04)
+
+The project now includes a materials catalogue foundation:
+
+- Public catalogue: `/materials`
+- Public product detail: `/materials/[slug]`
+- Admin product catalogue: `/admin/materials`
+- Admin suppliers: `/admin/suppliers`
+- Admin material-rate approval: `/admin/rates`
+
+### Database migration
+
+The additive migration is `prisma/migrations/20261104170000_materials_marketplace_procurement`.
+
+After reviewing the migration and confirming the intended database target, run these Windows CMD commands from the project root:
+
+```cmd
+npx prisma validate
+npx prisma generate
+npx prisma migrate status
+npx prisma migrate deploy
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Do not use `prisma db push` or `prisma migrate reset`. The migration is not applied automatically by this code package. Ensure `DATABASE_URL` points to the intended Neon database before running deployment commands.
+
+Products are private drafts by default (`active=false`). Only explicitly published products appear in the public catalogue. Material rates are created with `PENDING` status and only approved, effective, unexpired rates are returned by `/api/material-rates`. No market rates or inventory are seeded.
+\n## Construction operations (Phase 5)
+
+The authenticated `/admin/operations` workspace connects project delivery records without repurposing the public portfolio `Project` model.
+
+- Construction jobs can optionally link to an existing customer and quotation.
+- BOQ items calculate line estimates as quantity × unit rate and can optionally reference a currently approved material-rate record. The server resolves the approved rate and snapshots it onto the BOQ line.
+- Direct costs are categorized as material, labour, equipment, transport, subcontract or other.
+- Supplier quotations retain supplier, material, unit, rate, minimum order and validity details.
+- Purchase orders contain supplier-linked line items, tax and totals. Delivery receipts retain per-delivery item quantities, track cumulative received quantities and prevent over-receipt.
+- Customer receipts support pending, cleared, failed and refunded statuses.
+- Site progress updates retain percentage, narrative, blockers and optional photo URLs.
+- Actual expenditure is calculated from direct job costs plus received purchase-order quantities. Unreceived purchase-order value is reported separately as procurement commitment. Avoid recording the same PO delivery again as a direct material cost.
+
+### Phase 5 migration and deployment
+
+Back up the database, then from the project root run:
+
+```cmd
+npx prisma migrate status
+npx prisma migrate deploy
+npx prisma generate
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The new additive migration is `20261104180000_construction_operations`. Apply it only after reviewing the target database and existing migration status. Do not run `prisma db push` against production as a substitute for the migration history.
+
+
+## Construction control, workforce and finance (Phase 6)
+
+The `/admin/operations` workspace now includes the following additive workflows:
+
+- **BOQ editing and approval:** add up to three estimate lines in one batch, edit draft/rejected lines, submit the job BOQ for review, and have the Super Admin approve/reject pending lines. Approved and pending-review lines are locked against editing.
+- **Area-based quantity calculation:** set the project's built-up area in square feet. BOQ lines may use `PROJECT_AREA`, with the estimator entering a material factor per square foot; the server calculates `quantity = projectAreaSqFt × areaFactor`. This is a configurable estimator factor, not an automatically inferred engineering quantity.
+- **Labour attendance:** maintain contractor/trade records, record full-day and half-day headcount by project/date, calculate labour accrual, and require Super Admin approval before attendance enters actual project cost.
+- **Contractor settlement:** record pending/paid contractor payments and prevent settlement above approved attendance earnings less existing payment commitments. Payments are treated as settlement of labour accrual, not an additional expense.
+- **Supplier comparison:** compare recorded supplier quotations grouped by product, unit and specification, sorted by quoted rate. A selected current quote can prefill supplier, item, unit and rate on a new purchase order; the quote reference is retained in the PO notes. Verify delivery terms, tax and quality before selection.
+- **Purchase-order approval:** each new PO line must map to an approved BOQ item and the aggregate ordered quantity cannot exceed the approved BOQ quantity. Submit for approval; the creator cannot approve their own PO. Admin approval is limited to the configurable `PURCHASE_ORDER_SUPER_ADMIN_THRESHOLD` (default ₹1,00,000); larger POs require Super Admin approval. Approved POs can then be marked sent.
+- **Delivery / GRN:** record multi-line partial deliveries, delivery challan reference, receiver and notes. Each receipt has a printable `/admin/operations/grn/[id]` document; use the browser's Print / Save as PDF control to download it. Delivery quantities are protected against concurrent over-receipt.
+- **Customer payment schedule and receipts:** create dated milestones whose total cannot exceed contract value, allocate customer receipts to milestones, prevent over-collection, and print receipts at `/admin/operations/receipt/[id]`.
+- **Daily site reports:** capture work done, blockers, weather, crew count, materials, equipment, safety notes and up to four JPEG/PNG/WebP photographs. Photographs use the existing server-side Cloudinary integration under `ns-construction/site-reports`.
+- **Project and monthly finance views:** project lifetime contribution compares contract value with recorded costs. `/admin/operations/reports` provides month-scoped direct costs, approved labour accrual, received procurement, cleared customer collections and contractor cash paid.
+
+### Financial interpretation
+
+Actual project cost includes direct `JobCost` entries, the value of received purchase-order quantities (including proportionally allocated PO tax), and approved labour attendance. Contractor payments settle labour accrual and are not added again as a second cost. Avoid entering a labour attendance expense again as a manual labour `JobCost` line.
+
+The project contribution figure is an operational estimate (`contract value - recorded lifetime costs`), not a statutory accounting P&L. Monthly collections less contractor payments is a partial cash movement view; supplier invoice payments and other cash settlements are not represented as a complete cash ledger.
+
+### Phase 6 migration and deployment
+
+New additive migration: `20261104190000_construction_control_finance`.
+
+Back up the Neon database and check the migration history before deployment. From the project root in Windows CMD:
+
+```cmd
+npx prisma migrate status
+npx prisma migrate deploy
+npx prisma generate
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The site-report photo upload needs the existing Cloudinary credentials configured in the Vercel project environment. Do not commit real `.env` files or credentials.
+
+
+### Optional lead integrations: WhatsApp Cloud API and Google Sheets
+
+New website enquiries can be delivered to the business WhatsApp number through the official Meta WhatsApp Business Cloud API and mirrored into a Google Sheet through a secured Google Apps Script web app. Both integrations are optional; the enquiry is saved to PostgreSQL even when either provider is not configured or temporarily unavailable. Delivery outcomes are recorded in the activity log.
+
+**WhatsApp Cloud API setup**
+
+1. Create/configure a WhatsApp Business app in Meta for Developers and add a WhatsApp Business phone number.
+2. Create a long-lived system-user access token with the required WhatsApp messaging permissions. Keep it server-side only.
+3. Make sure the business notification recipient has opted in to receive WhatsApp messages. Create and get approval for a utility template named `new_enquiry_alert` (or set another template name). Its body must contain exactly five text placeholders, in this order: customer name, customer phone, project type, project location, enquiry ID. The app sends a template to the business notification number; it does not initiate free-form customer conversations.
+4. Set `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_API_VERSION`, `WHATSAPP_NOTIFY_PHONE`, `WHATSAPP_TEMPLATE_NAME`, and `WHATSAPP_TEMPLATE_LANGUAGE` in the deployment environment. `WHATSAPP_NOTIFY_PHONE` must include the country code and digits only (for example, `91...`).
+5. Open Admin → Integrations and test the connection. The test reads the registered phone-number profile and does not send a WhatsApp message. Submit a real test enquiry to verify template delivery.
+
+**Google Sheets setup**
+
+1. Create a Google Sheet and open Extensions → Apps Script.
+2. Add the script below. In Project Settings → Script Properties, add `NS_WEBHOOK_SECRET` with a long random value. Keep the same value in `GOOGLE_SHEETS_WEBHOOK_SECRET` on the server.
+3. Deploy as a Web app, execute as yourself, and allow access to anyone. The secret in the request body authenticates the webhook. Copy the `/exec` URL into `GOOGLE_SHEETS_WEBHOOK_URL`.
+4. Test from Admin → Integrations. The `integration.test` event is intentionally acknowledged without adding a row. Submit a real test enquiry to confirm the `Enquiries` tab receives a row.
+
+```javascript
+function doPost(e) {
+  const payload = JSON.parse((e.postData && e.postData.contents) || "{}");
+  const expected = PropertiesService.getScriptProperties().getProperty("NS_WEBHOOK_SECRET");
+  if (!expected || payload.secret !== expected) return json({ ok: false, error: "Unauthorized" });
+  if (payload.event === "integration.test") return json({ ok: true, test: true });
+  if (payload.event !== "enquiry.created" || !payload.enquiry) return json({ ok: false, error: "Unsupported event" });
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Enquiries") ||
+    SpreadsheetApp.getActiveSpreadsheet().insertSheet("Enquiries");
+  if (sheet.getLastRow() === 0) sheet.appendRow([
+    "Enquiry ID", "Created At", "Name", "Phone", "Email", "Project Type", "Location",
+    "Area", "Floors", "Budget", "Services", "Timeline", "Message", "Source"
+  ]);
+  const q = payload.enquiry;
+  const idColumn = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().flat() : [];
+  if (idColumn.includes(q.id)) return json({ ok: true, duplicate: true });
+  const safeCell = (value) => {
+    const text = String(value == null ? "" : value);
+    return /^[=+@\-\t\r]/.test(text) ? "\u0027" + text : text;
+  };
+  sheet.appendRow([
+    q.id, q.createdAt, safeCell(q.name), safeCell(q.phone), safeCell(q.email), safeCell(q.projectType), safeCell(q.location),
+    safeCell(q.projectArea), safeCell(q.floors), safeCell(q.budget), safeCell((q.services || []).join(", ")),
+    safeCell(q.timeline), safeCell(q.message), safeCell(q.source || "Website")
+  ]);
+  return json({ ok: true });
+}
+
+function json(value) {
+  return ContentService.createTextOutput(JSON.stringify(value))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+```
+
+Do not put provider tokens, webhook secrets, or database credentials in `NEXT_PUBLIC_*` variables or client-side code. Rotate any secret that has been shared publicly. Provider delivery is best-effort and does not block enquiry creation.

@@ -123,6 +123,7 @@ model Customer {
   siteLocation String?
   enquiries    Enquiry[]
   quotations   Quotation[]
+  constructionJobs ConstructionJob[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -239,6 +240,7 @@ model Quotation {
   items            QuotationItem[]
   revisions        QuotationRevision[]
   activities       QuotationActivity[]
+  constructionJob ConstructionJob?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -367,4 +369,461 @@ model RateLimitBucket {
   hits        Int      @default(1)
 
   @@id([key, windowStart])
+}
+
+// Materials marketplace and procurement
+
+enum RateApprovalStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model Supplier {
+  id              String           @id @default(cuid())
+  companyName     String
+  contactPerson   String?
+  phone           String?
+  whatsapp        String?
+  email           String?
+  address         String?          @db.Text
+  gstNumber       String?
+  categories      String[]         @default([])
+  brands          String[]         @default([])
+  paymentTerms    String?          @db.Text
+  deliveryTerms   String?          @db.Text
+  notes           String?          @db.Text
+  active          Boolean          @default(true)
+  products        Product[]
+  quotations      SupplierQuote[]
+  rates           MaterialRate[]
+  purchaseOrders  PurchaseOrder[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([companyName])
+  @@index([active, createdAt])
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  category        String
+  description     String    @default("") @db.Text
+  brand           String?
+  grade           String?
+  model           String?
+  dimensions      String?
+  specifications  Json      @default("{}")
+  unit            String    @default("unit")
+  sellingPrice    Decimal?  @db.Decimal(14, 2)
+  wholesalePrice  Decimal?  @db.Decimal(14, 2)
+  stockQuantity   Decimal?  @db.Decimal(14, 3)
+  stockStatus     String    @default("ENQUIRY_ONLY")
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  images          String[]  @default([])
+  featured        Boolean   @default(false)
+  active          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([category, active])
+  @@index([brand, active])
+  @@index([featured, active])
+}
+
+model SupplierQuote {
+  id             String   @id @default(cuid())
+  supplierId     String
+  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  reference      String?
+  category       String?
+  productName    String
+  brand          String?
+  specification  String?
+  unit           String
+  unitRate       Decimal  @db.Decimal(14, 2)
+  minimumOrder   Decimal? @db.Decimal(14, 3)
+  validUntil     DateTime?
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([supplierId, createdAt])
+}
+
+model MaterialRate {
+  id             String              @id @default(cuid())
+  materialName   String
+  category       String
+  brand          String?
+  specification  String?
+  unit           String
+  rate           Decimal             @db.Decimal(14, 2)
+  location       String              @default("Lucknow, Uttar Pradesh")
+  sourceLabel    String?
+  supplierId     String?
+  supplier       Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  effectiveFrom  DateTime            @default(now())
+  expiresAt      DateTime?
+  status         RateApprovalStatus  @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  notes          String?             @db.Text
+  boqItems       BoqItem[]
+  createdAt      DateTime            @default(now())
+
+  @@index([category, status, effectiveFrom])
+  @@index([materialName, location, status])
+}
+
+
+// Construction operations: live job costing, procurement, payments and progress.
+enum ConstructionJobStatus {
+  PLANNING
+  APPROVED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum JobCostCategory {
+  MATERIAL
+  LABOUR
+  EQUIPMENT
+  TRANSPORT
+  SUBCONTRACT
+  OTHER
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum CustomerPaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+  CARD
+  OTHER
+}
+
+enum CustomerPaymentStatus {
+  PENDING
+  CLEARED
+  FAILED
+  REFUNDED
+}
+
+enum BoqApprovalStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum PurchaseApprovalStatus {
+  NOT_SUBMITTED
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum LabourAttendanceStatus {
+  RECORDED
+  APPROVED
+  REJECTED
+}
+
+enum ContractorPaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum PaymentScheduleStatus {
+  UPCOMING
+  DUE
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+model ConstructionJob {
+  id              String                 @id @default(cuid())
+  jobNo           String                 @unique
+  name            String
+  siteLocation    String
+  description     String                 @default("") @db.Text
+  status          ConstructionJobStatus  @default(PLANNING)
+  customerId      String?
+  customer        Customer?              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  quotationId     String?                @unique
+  quotation       Quotation?             @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  startDate       DateTime?
+  targetEndDate   DateTime?
+  completedAt     DateTime?
+  budgetAmount    Decimal                @default(0) @db.Decimal(14, 2)
+  contractAmount  Decimal                @default(0) @db.Decimal(14, 2)
+  projectAreaSqFt Decimal                @default(0) @db.Decimal(14, 2)
+  notes           String                 @default("") @db.Text
+  boqItems        BoqItem[]
+  costs           JobCost[]
+  purchaseOrders  PurchaseOrder[]
+  payments        CustomerPayment[]
+  paymentSchedules CustomerPaymentSchedule[]
+  labourAttendance LabourAttendance[]
+  contractorPayments ContractorPayment[]
+  progressUpdates ProjectProgressUpdate[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model BoqItem {
+  id             String          @id @default(cuid())
+  jobId          String
+  job            ConstructionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  materialRateId String?
+  materialRate   MaterialRate?   @relation(fields: [materialRateId], references: [id], onDelete: SetNull)
+  code           String?
+  description    String
+  category       String
+  unit           String
+  quantity       Decimal         @db.Decimal(14, 3)
+  unitRate       Decimal         @db.Decimal(14, 2)
+  estimatedTotal Decimal         @db.Decimal(14, 2)
+  calculationBasis String        @default("MANUAL")
+  areaFactor     Decimal         @default(0) @db.Decimal(14, 6)
+  approvalStatus BoqApprovalStatus @default(DRAFT)
+  approvedBy     String?
+  approvedAt     DateTime?
+  purchaseOrderItems PurchaseOrderItem[]
+  notes          String          @default("") @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([jobId, category])
+  @@index([jobId, approvalStatus])
+}
+
+model JobCost {
+  id          String          @id @default(cuid())
+  jobId       String
+  job         ConstructionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  category    JobCostCategory
+  description String
+  quantity    Decimal         @default(1) @db.Decimal(14, 3)
+  unit        String          @default("lot")
+  unitRate    Decimal         @db.Decimal(14, 2)
+  totalAmount Decimal         @db.Decimal(14, 2)
+  incurredAt  DateTime        @default(now())
+  reference   String?
+  notes       String          @default("") @db.Text
+  createdBy   String
+  createdAt   DateTime        @default(now())
+
+  @@index([jobId, category, incurredAt])
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  poNumber     String              @unique
+  jobId        String
+  job          ConstructionJob     @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  supplierId   String
+  supplier     Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  status       PurchaseOrderStatus @default(DRAFT)
+  approvalStatus PurchaseApprovalStatus @default(NOT_SUBMITTED)
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  approvedBy   String?
+  approvalNote String              @default("") @db.Text
+  orderDate    DateTime            @default(now())
+  expectedDate DateTime?
+  subtotal     Decimal             @default(0) @db.Decimal(14, 2)
+  taxAmount    Decimal             @default(0) @db.Decimal(14, 2)
+  totalAmount  Decimal             @default(0) @db.Decimal(14, 2)
+  notes        String              @default("") @db.Text
+  items        PurchaseOrderItem[]
+  deliveries   PurchaseDelivery[]
+  createdBy    String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([jobId, status])
+  @@index([supplierId, orderDate])
+  @@index([approvalStatus, createdAt])
+}
+
+model PurchaseOrderItem {
+  id             String       @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder  PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  description    String
+  boqItemId      String?
+  boqItem        BoqItem?      @relation(fields: [boqItemId], references: [id], onDelete: SetNull)
+  unit           String
+  quantity       Decimal      @db.Decimal(14, 3)
+  unitRate       Decimal      @db.Decimal(14, 2)
+  totalAmount    Decimal      @db.Decimal(14, 2)
+  receivedQty    Decimal      @default(0) @db.Decimal(14, 3)
+  deliveryItems  PurchaseDeliveryItem[]
+  createdAt      DateTime     @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([boqItemId])
+}
+
+model PurchaseDelivery {
+  id              String       @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  deliveryRef     String?
+  deliveredAt     DateTime     @default(now())
+  receivedBy      String
+  notes           String       @default("") @db.Text
+  attachmentUrl   String?
+  items           PurchaseDeliveryItem[]
+  createdAt       DateTime     @default(now())
+
+  @@index([purchaseOrderId, deliveredAt])
+}
+
+model PurchaseDeliveryItem {
+  id                  String             @id @default(cuid())
+  deliveryId          String
+  delivery            PurchaseDelivery   @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem  @relation(fields: [purchaseOrderItemId], references: [id], onDelete: Cascade)
+  quantityReceived    Decimal            @db.Decimal(14, 3)
+  createdAt           DateTime            @default(now())
+
+  @@index([deliveryId])
+  @@index([purchaseOrderItemId, createdAt])
+}
+
+model CustomerPayment {
+  id            String                @id @default(cuid())
+  jobId         String
+  job           ConstructionJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  receiptNo     String                @unique
+  amount        Decimal               @db.Decimal(14, 2)
+  scheduleId    String?
+  schedule      CustomerPaymentSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  method        CustomerPaymentMethod
+  status        CustomerPaymentStatus @default(PENDING)
+  reference     String?
+  paidAt        DateTime              @default(now())
+  notes         String                @default("") @db.Text
+  recordedBy    String
+  createdAt     DateTime              @default(now())
+
+  @@index([jobId, status, paidAt])
+  @@index([scheduleId])
+}
+
+model LabourContractor {
+  id          String               @id @default(cuid())
+  contractorName String
+  phone       String?
+  trade       String
+  dailyRate   Decimal              @db.Decimal(14, 2)
+  active      Boolean              @default(true)
+  attendance  LabourAttendance[]
+  payments    ContractorPayment[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([contractorName, active])
+}
+
+model LabourAttendance {
+  id             String                 @id @default(cuid())
+  jobId          String
+  job            ConstructionJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contractorId   String
+  contractor     LabourContractor      @relation(fields: [contractorId], references: [id], onDelete: Restrict)
+  attendanceDate DateTime
+  workerCount    Int                    @default(1)
+  presentCount   Int                    @default(1)
+  halfDayCount   Int                    @default(0)
+  dailyRate      Decimal                @db.Decimal(14, 2)
+  totalAmount    Decimal                @db.Decimal(14, 2)
+  status         LabourAttendanceStatus @default(RECORDED)
+  notes          String                 @default("") @db.Text
+  recordedBy     String
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([jobId, contractorId, attendanceDate])
+  @@index([jobId, attendanceDate, status])
+}
+
+model ContractorPayment {
+  id            String                  @id @default(cuid())
+  jobId         String
+  job           ConstructionJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contractorId  String
+  contractor    LabourContractor       @relation(fields: [contractorId], references: [id], onDelete: Restrict)
+  paymentNo     String                  @unique
+  amount        Decimal                 @db.Decimal(14, 2)
+  status        ContractorPaymentStatus @default(PENDING)
+  paidAt        DateTime?
+  method        CustomerPaymentMethod   @default(BANK_TRANSFER)
+  reference     String?
+  notes         String                  @default("") @db.Text
+  recordedBy    String
+  createdAt     DateTime                @default(now())
+
+  @@index([jobId, contractorId, status])
+}
+
+model CustomerPaymentSchedule {
+  id          String               @id @default(cuid())
+  jobId       String
+  job         ConstructionJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  title       String
+  dueDate     DateTime
+  amount      Decimal              @db.Decimal(14, 2)
+  status      PaymentScheduleStatus @default(UPCOMING)
+  payments    CustomerPayment[]
+  notes       String               @default("") @db.Text
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([jobId, dueDate, status])
+}
+
+model ProjectProgressUpdate {
+  id              String          @id @default(cuid())
+  jobId           String
+  job             ConstructionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  title           String
+  description     String          @default("") @db.Text
+  progressPercent Int
+  updateDate      DateTime        @default(now())
+  photos          String[]        @default([])
+  blockers        String          @default("") @db.Text
+  weather         String          @default("")
+  crewCount       Int             @default(0)
+  workDone        String          @default("") @db.Text
+  materialsUsed   String          @default("") @db.Text
+  equipmentUsed   String          @default("") @db.Text
+  safetyNotes     String          @default("") @db.Text
+  createdBy       String
+  createdAt       DateTime        @default(now())
+
+  @@index([jobId, updateDate])
 }

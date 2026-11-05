@@ -4,7 +4,7 @@ import { logApiError } from "@/lib/api-errors";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit } from "@/lib/rate-limit";
 import { MediaUploadError, uploadToCloudinary } from "@/lib/cloudinary";
-import { sendEnquiryNotifications } from "@/lib/notifications";
+import { sendEnquiryNotifications, sendGoogleSheetsEnquiry, sendWhatsAppEnquiryAlert } from "@/lib/notifications";
 import { databaseErrorResponse, prismaErrorCode } from "@/lib/prisma-errors";
 
 export const runtime = "nodejs";
@@ -108,6 +108,8 @@ export async function POST(request: Request) {
 
     let deliveryStatus = "NOT_CONFIGURED";
     let attempts = 0;
+    let whatsappDeliveryStatus = "NOT_CONFIGURED";
+    let sheetsDeliveryStatus = "NOT_CONFIGURED";
     try {
       const notification = await sendEnquiryNotifications(enquiry);
       deliveryStatus = notification.status;
@@ -121,6 +123,18 @@ export async function POST(request: Request) {
       deliveryStatus = "FAILED";
       logApiError("POST /api/enquiries notification tracking", error);
     }
+    const [whatsappDelivery, sheetsDelivery] = await Promise.all([
+      sendWhatsAppEnquiryAlert(enquiry),
+      sendGoogleSheetsEnquiry(enquiry),
+    ]);
+    whatsappDeliveryStatus = whatsappDelivery.status;
+    sheetsDeliveryStatus = sheetsDelivery.status;
+    try {
+      await prisma.activityLog.createMany({ data: [
+        { action: "WHATSAPP_ENQUIRY_ALERT", entityType: "ENQUIRY", entityId: enquiry.id, enquiryId: enquiry.id, actorEmail: "system", details: `WhatsApp alert: ${whatsappDelivery.status}${whatsappDelivery.providerMessageId ? ` (${whatsappDelivery.providerMessageId})` : ""}${whatsappDelivery.error ? ` — ${whatsappDelivery.error}` : ""}` },
+        { action: "GOOGLE_SHEETS_ENQUIRY_SYNC", entityType: "ENQUIRY", entityId: enquiry.id, enquiryId: enquiry.id, actorEmail: "system", details: `Google Sheets sync: ${sheetsDelivery.status}${sheetsDelivery.error ? ` — ${sheetsDelivery.error}` : ""}` },
+      ] });
+    } catch (error) { logApiError("POST /api/enquiries integration tracking", error); }
     try {
       await prisma.enquiry.update({ where: { id: enquiry.id }, data: {
         emailDeliveryStatus: deliveryStatus,
@@ -130,7 +144,7 @@ export async function POST(request: Request) {
     } catch (error) {
       logApiError("POST /api/enquiries delivery status", error);
     }
-    return NextResponse.json({ ok: true, id: enquiry.id, emailDeliveryStatus: deliveryStatus }, { status: 201 });
+    return NextResponse.json({ ok: true, id: enquiry.id, emailDeliveryStatus: deliveryStatus, whatsappDeliveryStatus, sheetsDeliveryStatus }, { status: 201 });
   } catch (error) {
     if (error instanceof MediaUploadError) return NextResponse.json({ error: error.message }, { status: error.status });
     if (prismaErrorCode(error) === "P2002") {

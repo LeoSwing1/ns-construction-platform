@@ -50,8 +50,8 @@ export default async function Home() {
       <div className="utility-bar"><div className="site-container utility-inner"><span>{settings.location} <i>·</i> Project consultations by appointment</span><a href={`tel:${settings.phoneHref}`}>{settings.phoneDisplay} <ArrowUpRight size={13} /></a></div></div>
       <header className="site-header"><div className="site-container nav-inner">
         <Link className="wordmark" href="/" aria-label="N.S. Construction home"><span className="wordmark-monogram">N<span>.</span>S</span><span className="wordmark-copy">N.S. CONSTRUCTION<small>BUILDING WITH PURPOSE</small></span></Link>
-        <nav className="main-nav" aria-label="Main navigation"><a href="#approach">Our approach</a><a href="#services">Capabilities</a><Link href="/projects">Projects</Link><Link href="/blog">Journal</Link><Link href="/quote">Estimate</Link><a href="#contact">Contact</a></nav>
-        <details className="mobile-nav"><summary>Menu</summary><div><a href="#approach">Our approach</a><a href="#services">Capabilities</a><Link href="/projects">Projects</Link><Link href="/blog">Journal</Link><Link href="/quote">Estimate</Link><a href="#contact">Contact</a></div></details>
+        <nav className="main-nav" aria-label="Main navigation"><a href="#approach">Our approach</a><a href="#services">Capabilities</a><Link href="/projects">Projects</Link><Link href="/materials">Materials</Link><Link href="/blog">Journal</Link><Link href="/quote">Estimate</Link><a href="#contact">Contact</a></nav>
+        <details className="mobile-nav"><summary>Menu</summary><div><a href="#approach">Our approach</a><a href="#services">Capabilities</a><Link href="/projects">Projects</Link><Link href="/materials">Materials</Link><Link href="/blog">Journal</Link><Link href="/quote">Estimate</Link><a href="#contact">Contact</a></div></details>
         <Link className="nav-cta" href="/quote">Start an estimate <ArrowUpRight size={15} /></Link>
       </div></header>
 
@@ -122,7 +122,7 @@ export default async function Home() {
       </main>
       <footer className="site-footer"><div className="site-container footer-main">
         <div className="footer-brand"><Link className="wordmark wordmark-light" href="/"><span className="wordmark-monogram">N<span>.</span>S</span><span className="wordmark-copy">N.S. CONSTRUCTION<small>BUILDING WITH PURPOSE</small></span></Link><p>Thoughtful project conversations.<br />Considered construction work.</p><span className="footer-location">LUCKNOW, UTTAR PRADESH, INDIA</span></div>
-        <div className="footer-column"><span>EXPLORE</span><a href="#approach">Our approach</a><a href="#services">Capabilities</a><Link href="/projects">Projects</Link><Link href="/blog">Journal</Link></div>
+        <div className="footer-column"><span>EXPLORE</span><a href="#approach">Our approach</a><a href="#services">Capabilities</a><Link href="/projects">Projects</Link><Link href="/materials">Materials</Link><Link href="/blog">Journal</Link></div>
         <div className="footer-column"><span>GET IN TOUCH</span><a href={`tel:${settings.phoneHref}`}>{settings.phoneDisplay}</a><a href={`https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent("Hello N.S. Construction, I would like to discuss a project.")}`} target="_blank" rel="noreferrer">WhatsApp ↗</a><a href={settings.mapsUrl} target="_blank" rel="noreferrer">{settings.location} on Google Maps ↗</a><a href={settings.facebookUrl} target="_blank" rel="noreferrer">Facebook ↗</a>{settings.instagramUrl && <a href={settings.instagramUrl} target="_blank" rel="noreferrer">Instagram ↗</a>}</div>
       </div>      <div className="site-container footer-bottom"><span>© {new Date().getFullYear()} N.S. Construction</span><div><Link href="/privacy">Privacy</Link><Link href="/admin/login">Admin</Link></div><span>Built on trust. Delivered with care.</span></div></footer>
     </>

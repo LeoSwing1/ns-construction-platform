@@ -775,3 +775,117 @@ img { display: block; max-width: 100%; }
   .mobile-nav > div { position: absolute; z-index: 25; right: 0; top: calc(100% + 9px); display: grid; width: 190px; padding: 8px 14px; background: var(--paper); box-shadow: 0 8px 24px #0002; }
   .mobile-nav > div a { padding: 12px 3px; border-bottom: 1px solid var(--line); font-size: 10px; }
 }
+
+/* Materials catalogue */
+.materials-page { min-height: 100vh; background: var(--paper); }
+.materials-nav { min-height: 78px; display:flex; align-items:center; justify-content:space-between; gap:24px; padding:0 max(28px,calc((100vw - 1320px)/2)); border-bottom:1px solid var(--line); }
+.materials-brand { font:24px var(--display); color:var(--forest); letter-spacing:-.03em; }
+.materials-brand span { display:block; font:700 8px var(--body); letter-spacing:.2em; }
+.materials-nav nav { display:flex; gap:25px; font-size:11px; font-weight:600; }
+.materials-hero { padding:100px max(28px,calc((100vw - 1320px)/2)) 85px; color:#fff; background:var(--forest); }
+.materials-hero h1 { margin:20px 0; font:clamp(48px,7vw,86px)/.98 var(--display); letter-spacing:-.04em; }
+.materials-hero p { max-width:570px; color:rgba(255,255,255,.72); font-size:13px; line-height:1.9; }
+.materials-content { max-width:1320px; margin:auto; padding:55px 28px 100px; }
+.materials-toolbar { display:grid; grid-template-columns:1fr 260px; gap:12px; margin-bottom:32px; }
+.materials-toolbar input,.materials-toolbar select { min-height:48px; padding:0 14px; border:1px solid var(--line); background:#fff; color:var(--ink); }
+.materials-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.material-card { overflow:hidden; background:#fff; border:1px solid var(--line); }
+.material-card-image { height:220px; display:grid; place-items:center; position:relative; background:#e8e5dc; color:#8b806c; font:20px var(--display); }
+.material-card-image img { width:100%; height:100%; object-fit:cover; }
+.material-card-image b { position:absolute; top:12px; left:12px; padding:7px 9px; background:var(--sand); color:var(--forest); font-size:8px; text-transform:uppercase; letter-spacing:.1em; }
+.material-card-body { padding:20px; }
+.material-card-body small { color:#98794e; font-size:9px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; }
+.material-card-body h2 { margin:10px 0; font:25px var(--display); }
+.material-card-body p { min-height:45px; color:#6d746e; font-size:11px; line-height:1.7; }
+.material-card-price { display:flex; justify-content:space-between; gap:12px; margin:18px 0; font-size:10px; }
+.material-card-price strong { font-size:13px; }
+.material-card-price span { color:#777; text-transform:capitalize; }
+.material-cta { display:inline-flex; padding:12px 15px; color:#fff; background:var(--forest); font-size:10px; font-weight:700; }
+.materials-footer { display:flex; justify-content:space-between; gap:20px; padding:28px max(28px,calc((100vw - 1320px)/2)); background:var(--forest-deep); color:#fff; font-size:10px; }
+@media(max-width:800px){.materials-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.materials-nav nav{gap:12px;font-size:9px}}
+@media(max-width:560px){.materials-grid{grid-template-columns:1fr}.materials-toolbar{grid-template-columns:1fr}.materials-hero{padding-top:70px}.materials-nav{padding-inline:18px}.materials-nav nav{gap:9px}.materials-nav nav a:first-child{display:none}.materials-footer{flex-direction:column}}
+.admin-form { display:grid; gap:16px; margin-top:18px; }
+.admin-form label { display:grid; gap:7px; color:#5d665f; font-size:10px; font-weight:700; }
+.admin-form input,.admin-form select,.admin-form textarea { width:100%; min-height:42px; padding:10px 12px; border:1px solid var(--line); background:#fff; color:var(--ink); font:12px var(--body); }
+.admin-form textarea { min-height:85px; resize:vertical; }
+.form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.form-checks,.form-actions { display:flex; flex-wrap:wrap; align-items:center; gap:18px; }
+.form-checks label { display:flex; align-items:center; gap:8px; }
+.form-checks input { width:auto; min-height:auto; }
+@media(max-width:620px){.form-grid{grid-template-columns:1fr}}
+.product-detail-grid { display:grid; grid-template-columns:1.05fr 1fr; gap:55px; margin-top:32px; align-items:start; }
+.product-detail-image { min-height:420px; }
+.product-detail-title { margin:15px 0; font:clamp(40px,5vw,65px)/1 var(--display); }
+.product-detail-grid p { color:#68716b; font-size:12px; line-height:1.9; }
+.product-detail-grid h2 { margin:25px 0; font:28px var(--display); }
+@media(max-width:700px){.product-detail-grid{grid-template-columns:1fr;gap:25px}.product-detail-image{min-height:280px}}
+
+
+/* Construction operations workspace */
+.operations-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; }
+.operations-form label, .operations-card label { display:flex; flex-direction:column; gap:6px; color:#59625b; font-size:9px; }
+.operations-form input, .operations-form select, .operations-form textarea,
+.operations-card input, .operations-card select, .operations-card textarea {
+  width:100%; min-width:0; min-height:39px; padding:9px 10px; border:1px solid #d9d7ce;
+  border-radius:0; color:#202923; background:#fff; font:inherit; font-size:10px;
+}
+.operations-form textarea, .operations-card textarea { resize:vertical; }
+.operations-wide { grid-column:1/-1; }
+.operations-form > button { justify-self:start; }
+.operations-metrics { margin:12px 0 20px; }
+.operations-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; margin-top:18px; }
+.operations-card { min-width:0; padding:17px; border:1px solid #e5e2d9; background:#fcfbf8; }
+.operations-card h3, .operations-records h3 { margin:0 0 13px; font:20px var(--display); }
+.operations-card form { display:grid; gap:11px; }
+.operations-inline { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.operations-records { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:22px; }
+.operations-records > section { min-width:0; padding-top:16px; border-top:1px solid #e5e2d9; }
+.operations-record { display:grid; grid-template-columns:1fr auto; gap:5px 12px; padding:12px 0; border-top:1px solid #ece9e1; font-size:10px; }
+.operations-record span, .operations-record small { color:#727a72; }
+.operations-record small { grid-column:1/-1; line-height:1.5; }
+.operations-record b { grid-column:2; grid-row:1/3; align-self:center; }
+@media (max-width:800px) {
+  .operations-form { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .operations-grid, .operations-records { grid-template-columns:1fr; }
+  .operations-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:520px) {
+  .operations-form { grid-template-columns:1fr; }
+  .operations-inline { grid-template-columns:1fr 1fr; }
+  .operations-wide { grid-column:auto; }
+}
+
+.operations-delivery { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:8px; padding:10px; background:#f7f6f1; border:1px solid #e7e4dc; }
+.operations-delivery label { display:flex; flex-direction:column; gap:5px; color:#657067; font-size:9px; }
+.operations-delivery input { width:100%; min-height:35px; padding:7px; border:1px solid #d9d7ce; background:white; font-size:10px; }
+@media(max-width:600px) { .operations-delivery { grid-template-columns:1fr; } }
+
+/* Phase 6 — construction control, approvals and financial reporting */
+.operations-header-actions { display:flex; gap:9px; flex-wrap:wrap; }
+.operations-quote-comparison { margin-top:18px; padding-top:16px; border-top:1px solid #e7e4dc; }
+.operations-quote-comparison h3, .operations-report-section h2 { margin:0 0 8px; font:20px var(--display); }
+.operations-quote-group { margin:12px 0; padding:12px; border:1px solid #e7e4dc; background:#fff; }
+.operations-quote-group > strong { display:block; margin-bottom:8px; }
+.operations-quote-row { display:grid; grid-template-columns:1fr auto; gap:4px 12px; padding:8px 0; border-top:1px solid #efede7; font-size:11px; }
+.operations-quote-row small { grid-column:1/-1; color:#747b73; }
+.operations-quote-row em { margin-left:8px; color:#18724d; font-size:9px; font-style:normal; }
+.operations-boq-entry, .operations-boq-edit { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; padding:12px; border:1px solid #e7e4dc; background:#fff; }
+.operations-boq-edit { grid-template-columns:1fr; margin:10px 0; }
+.operations-boq-edit > span { color:#667067; font-size:10px; }
+.operations-boq-entry label, .operations-boq-edit label { display:flex; flex-direction:column; gap:5px; font-size:9px; color:#667067; }
+.operations-boq-entry input, .operations-boq-entry select, .operations-boq-edit input, .operations-boq-edit select { width:100%; min-width:0; }
+.operations-delivery-batch { grid-template-columns:1fr; }
+.operations-delivery-heading { display:flex; flex-direction:column; gap:4px; }
+.operations-delivery-heading span { color:#737b73; font-size:10px; }
+.operations-delivery-line { display:grid; grid-template-columns:1fr minmax(120px,220px); gap:10px; align-items:end; padding:8px 0; border-bottom:1px solid #e9e6df; }
+.operations-report-toolbar { display:flex; justify-content:space-between; align-items:end; gap:14px; margin-bottom:18px; }
+.operations-report-toolbar label { display:grid; gap:6px; max-width:240px; font-size:10px; }
+.operations-report-toolbar span { color:#727a72; font-size:10px; }
+.operations-report-section { margin-top:24px; }
+.operations-report-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top:18px; margin-top:18px; border-top:1px solid #e5e2d9; color:#6b746b; font-size:10px; }
+@media(max-width:760px) { .operations-boq-entry { grid-template-columns:repeat(2,minmax(0,1fr)); } .operations-report-toolbar, .operations-report-footer { align-items:stretch; flex-direction:column; } }
+@media print { .operations-report-toolbar, .operations-report-footer, .admin-header > a, .operations-header-actions { display:none !important; } .admin-shell { padding:0; background:white; } .admin-panel { border:0; box-shadow:none; } }
+.operations-boq-batch-edit { display:grid; gap:10px; margin-top:12px; }
+.operations-boq-batch-edit > button { justify-self:start; }
+.operations-delivery-batch > label { display:grid; gap:5px; font-size:10px; color:#667067; }
+@media print { .admin-header .btn, .operations-header-actions { display:none !important; } }

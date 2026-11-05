@@ -1,0 +1,13 @@
+Template name: new_enquiry_alert
+Category: Utility
+Language: en_US
+
+New website enquiry received for N.S. Construction.
+
+Customer: {{1}}
+Phone: {{2}}
+Project type: {{3}}
+Location: {{4}}
+Enquiry ID: {{5}}
+
+Please review and follow up with the customer.

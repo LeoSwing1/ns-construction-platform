@@ -28,7 +28,11 @@ export default async function PrintQuotation({ params }: { params: Promise<{ id:
     : [];
   const milestones = Array.isArray(quotation.paymentMilestones)
     ? quotation.paymentMilestones.flatMap((entry) => typeof entry === "object" && entry !== null && "label" in entry && "percentage" in entry
-      ? [{ label: String(entry.label), percentage: String(entry.percentage) }]
+      ? [{
+        label: String(entry.label),
+        percentage: Number(entry.percentage),
+        amount: Number((Number(quotation.totalAmount.toString()) * Number(entry.percentage) / 100).toFixed(2)),
+      }]
       : [])
     : [];
 
@@ -67,7 +71,7 @@ export default async function PrintQuotation({ params }: { params: Promise<{ id:
       {quotation.exclusions && <div><div className="quotation-section-title"><span>04</span><h2>Exclusions</h2></div><p>{quotation.exclusions}</p></div>}
       {quotation.requirements && <div className="quotation-requirement"><div className="quotation-section-title"><span>05</span><h2>Project requirements</h2></div><p>{quotation.requirements}</p></div>}
     </section>}
-    {milestones.length > 0 && <section className="quotation-document-section"><div className="quotation-section-title"><span>06</span><h2>Payment milestones</h2></div><div className="quotation-milestones">{milestones.map((item) => <div key={item.label}><span>{item.label}</span><strong>{item.percentage}%</strong></div>)}</div></section>}
+    {milestones.length > 0 && <section className="quotation-document-section"><div className="quotation-section-title"><span>06</span><h2>Payment milestones</h2></div><div className="quotation-milestones">{milestones.map((item) => <div key={item.label}><span>{item.label}</span><strong>{item.percentage}% · {money(item.amount)}</strong></div>)}</div></section>}
     <section className="quotation-terms"><span>ESTIMATE BASIS & COMMERCIAL TERMS</span><p>This quotation is an indicative estimate and is subject to site inspection, structural requirements, approved drawings, final material specifications and a detailed scope of work. The rate depends on confirmed specifications, brands, materials and finishes. Labour, material supply, transportation, machinery, approvals and other items are included only where expressly listed in the package inclusions; exclusions and additional charges are shown separately. No final fixed price is confirmed until the scope and specifications are approved by both parties.</p><p>Validity: {quotation.validityDays} days from the issue date. Taxes, where configured, are shown separately above.</p></section>
     <section className="quotation-acceptance"><div><span>FOR N.S. CONSTRUCTION</span><div className="quotation-signature-line" /><small>Authorised representative</small></div><div><span>CLIENT ACCEPTANCE</span><div className="quotation-signature-line" /><small>Name, signature and date</small></div></section>
     <footer className="quotation-document-footer"><strong>N.S. CONSTRUCTION</strong><span>{settings.phoneDisplay} · {settings.location}</span><small>Prepared for the named customer. Please confirm site details and approved specifications with our team.</small></footer>

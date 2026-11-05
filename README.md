@@ -163,6 +163,8 @@ npm run build
 Do not use `prisma db push` or `prisma migrate reset`. The migration is not applied automatically by this code package. Ensure `DATABASE_URL` points to the intended Neon database before running deployment commands.
 
 Products are private drafts by default (`active=false`). Only explicitly published products appear in the public catalogue. Material rates are created with `PENDING` status and only approved, effective, unexpired rates are returned by `/api/material-rates`. No market rates or inventory are seeded.
+
+Products can also be enabled as quotation material specifications. Their retail selling prices are not used as construction upgrade prices; configure the per-square-foot adjustment separately in `/admin/quotations`. The additive migrations `prisma/migrations/20261105160000_product_quotation_catalog` and `prisma/migrations/20261105170000_product_catalog_uniqueness` link products to quotation specifications, backfill existing products and preserve material-catalogue uniqueness. Vercel builds do not apply Prisma migrations: review the target database and run `npx prisma migrate deploy` against the production `DATABASE_URL` before using this integration.
 \n## Construction operations (Phase 5)
 
 The authenticated `/admin/operations` workspace connects project delivery records without repurposing the public portfolio `Project` model.

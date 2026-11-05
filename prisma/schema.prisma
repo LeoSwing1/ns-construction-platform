@@ -166,6 +166,8 @@ model MaterialSpecification {
   id            String          @id @default(cuid())
   categoryId    String
   category      MaterialCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  productId     String?         @unique
+  product       Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   name          String
   quality       ConstructionGrade
   brand         String?
@@ -423,6 +425,9 @@ model Product {
   wholesalePrice  Decimal?  @db.Decimal(14, 2)
   stockQuantity   Decimal?  @db.Decimal(14, 3)
   stockStatus     String    @default("ENQUIRY_ONLY")
+  quotationQuality ConstructionGrade @default(ESSENTIAL)
+  quotationActive  Boolean   @default(true)
+  quotationSpecification MaterialSpecification?
   supplierId      String?
   supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   images          String[]  @default([])

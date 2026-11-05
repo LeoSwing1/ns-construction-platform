@@ -227,22 +227,29 @@ export default function QuotationsAdmin() {
   }
 
   async function previewNewQuote() {
-    setBusy("new-quote-preview"); setNotice("");
-    const response = await fetch("/api/quotations/calculate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        packageId: newQuote.packageId,
-        constructionAreaSqFt: Number(newQuote.area),
-        selections: Object.entries(newQuote.selections).filter(([, id]) => id).map(([categoryId, specificationId]) => ({ categoryId, specificationId })),
-      }),
-    });
-    const body = await response.json();
-    if (!response.ok) { setNotice(body.error || "Estimate preview could not be calculated."); setNewQuoteEstimate(null); setBusy(""); return; }
-    setNewQuoteEstimate(body);
-    setConfirmNewQuoteUpgrades(false);
-    setNotice("Server-calculated estimate preview ready. Review material upgrades before creating the quotation.");
-    setBusy("");
+    setBusy("new-quote-preview");
+    setNotice("");
+    try {
+      const response = await fetch("/api/quotations/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: newQuote.packageId,
+          constructionAreaSqFt: Number(newQuote.area),
+          selections: Object.entries(newQuote.selections).filter(([, id]) => id).map(([categoryId, specificationId]) => ({ categoryId, specificationId })),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Estimate preview could not be calculated.");
+      setNewQuoteEstimate(body);
+      setConfirmNewQuoteUpgrades(false);
+      setNotice("Server-calculated estimate preview ready. Review material upgrades before creating the quotation.");
+    } catch (cause) {
+      setNewQuoteEstimate(null);
+      setNotice(cause instanceof Error ? cause.message : "Estimate preview could not be calculated.");
+    } finally {
+      setBusy("");
+    }
   }
 
   async function createQuotation(event: React.FormEvent) {
@@ -250,30 +257,38 @@ export default function QuotationsAdmin() {
     if (!newQuoteEstimate) { setNotice("Preview the server-calculated total before creating this quotation."); return; }
     if (newQuoteEstimate.items.some((item) => !item.includedInPackage) && !confirmNewQuoteUpgrades) { setNotice("Confirm the itemised material upgrades before creating the quotation."); return; }
     setBusy("new-quote-create");
-    const response = await fetch("/api/admin/quotations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: newQuote.name,
-        phone: newQuote.phone,
-        email: newQuote.email,
-        siteLocation: newQuote.siteLocation,
-        propertyType: newQuote.propertyType,
-        plotAreaSqFt: newQuote.plotArea ? Number(newQuote.plotArea) : null,
-        constructionAreaSqFt: Number(newQuote.area),
-        floors: newQuote.floors ? Number(newQuote.floors) : null,
-        requirements: newQuote.requirements,
-        packageId: newQuote.packageId,
-        selections: Object.entries(newQuote.selections).filter(([, id]) => id).map(([categoryId, specificationId]) => ({ categoryId, specificationId })),
-        confirmUpgrades: confirmNewQuoteUpgrades,
-      }),
-    });
-    const body = await response.json();
-    if (!response.ok) { setNotice(body.error || "Quotation could not be created."); setBusy(""); return; }
-    setViewLink(body.quotationUrl);
-    setNotice(`Quotation ${body.quotationNo} created for ${money(body.totalAmount)} and linked to the customer CRM.`);
-    setCreateOpen(false); setNewQuote(emptyNewQuote); setNewQuoteEstimate(null); setBusy("");
-    await load();
+    try {
+      const response = await fetch("/api/admin/quotations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newQuote.name,
+          phone: newQuote.phone,
+          email: newQuote.email,
+          siteLocation: newQuote.siteLocation,
+          propertyType: newQuote.propertyType,
+          plotAreaSqFt: newQuote.plotArea ? Number(newQuote.plotArea) : null,
+          constructionAreaSqFt: Number(newQuote.area),
+          floors: newQuote.floors ? Number(newQuote.floors) : null,
+          requirements: newQuote.requirements,
+          packageId: newQuote.packageId,
+          selections: Object.entries(newQuote.selections).filter(([, id]) => id).map(([categoryId, specificationId]) => ({ categoryId, specificationId })),
+          confirmUpgrades: confirmNewQuoteUpgrades,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Quotation could not be created.");
+      setViewLink(body.quotationUrl);
+      setNotice(`Quotation ${body.quotationNo} created for ${money(body.totalAmount)} and linked to the customer CRM.`);
+      setCreateOpen(false);
+      setNewQuote(emptyNewQuote);
+      setNewQuoteEstimate(null);
+      await load();
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "Quotation could not be created.");
+    } finally {
+      setBusy("");
+    }
   }
 
   function beginRevision(item: Quote) {

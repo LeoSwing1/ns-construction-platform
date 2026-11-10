@@ -9,6 +9,8 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   {url:base,lastModified:new Date(),changeFrequency:"weekly",priority:1},
   {url:`${base}/projects`,lastModified:new Date(),changeFrequency:"weekly",priority:.8},
   {url:`${base}/blog`,lastModified:new Date(),changeFrequency:"weekly",priority:.8},
+  {url:`${base}/remodeling-house-cost`,lastModified:new Date(),changeFrequency:"monthly" as const,priority:.7},
+  {url:`${base}/house-foundation-types`,lastModified:new Date(),changeFrequency:"monthly" as const,priority:.7},
   ...projects.map(p=>({url:`${base}/projects/${p.slug}`,lastModified:p.updatedAt,changeFrequency:"monthly" as const,priority:.7})),
   ...posts.map(p=>({url:`${base}/blog/${p.slug}`,lastModified:p.updatedAt,changeFrequency:"monthly" as const,priority:.7}))
  ];
